@@ -1,71 +1,77 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { createContext, useRef, useState, useContext } from "react";
 
-const buttonReducer = (state, action) => {
-  switch(action.type) {
-    case 'push':
-      return {
-        ...state,
-        isPushed: !state.isPushed
-      }
-    default:
-      return state;
-  }
-}
+const TodoListContext = createContext([
+  {
+    todos: []
+  },
+  () => {}
+]);
 
-const useReducer = (reducer, initialState) => {
-  const [ state, setState ] = useState(initialState);
+const Input = () => {
+  const inputRef = useRef(null);
+  const [todos, setTodos] = useContext(TodoListContext);
 
-  function dispatch(action) {
-    const nextState = reducer(state, action);
-    setState(nextState);
-  }
-
-  return [state, dispatch] ;
-}
-
-const Button = () => {
-  const [buttonState, dispatch] = useReducer(buttonReducer, {
-    isPushed: false
-  });
-
-  const buttonRef = useRef(null);
-
-  const testFn = text => {
-    const { current } = buttonRef;
-    current.innerText = `${text} wesh alors`;
+  const addTodo = () => {
+    const { current } = inputRef;
+    const newTodo = {
+      id: todos.length ? todos[todos.length - 1].id + 1 : 0,
+      description: current.value,
+      completed: false
+    };
+    console.log("todos", todos);
+    console.log("newtodo", newTodo);
+    setTodos([...todos, newTodo]);
   };
-
-  useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      testFn(i);
-      i += 1;
-      if (i > 5) {
-        clearInterval(interval);
-        dispatch({
-          type: 'push',
-          payload: {
-            isPushed: true
-          }
-        })
-      }
-    }, 1000);
-  }, []);
-
-  const { isPushed } = buttonState;
   return (
-    <button ref={buttonRef} onClick={() => testFn('bruh')}>
-      {isPushed ? "true" : "false"}
-    </button>
+    <div>
+      <input type="text" ref={inputRef}></input>
+      <button onClick={addTodo}>Add todo</button>
+    </div>
   );
 };
 
-function App() {
+const TodoList = () => {
+  const [todos, setTodos] = useContext(TodoListContext);
+
+  const removeTodo = todoId => {
+    setTodos(todos.filter(todo => todo.id !== todoId));
+  };
+
+  const setComplete = todoId => {
+    let index = todos.findIndex(({id}) => id === todoId);
+    setTodos(Object.assign([...todos], {[index] : {...todos[index], completed: true} } ));
+  };
+
   return (
-    <div className="App">
-      <Button />
-    </div>
+    <ul>
+      {!todos.length && 'Your todo list is empty'}
+      {todos.length > 0 &&
+        todos.map(todo => (
+          <li key={todo.id}>
+            <button onClick={() => removeTodo(todo.id)}>X</button>{" "}
+            {todo.description} : {todo.completed ? "Completed" : "To be done"}{" "}
+            <button onClick={() => setComplete(todo.id)}>
+              Mark as completed
+            </button>
+          </li>
+        ))}
+    </ul>
   );
-}
+};
+
+const App = () => {
+  const [state, setState] = useState({
+    todos: []
+  });
+
+  return (
+    <TodoListContext.Provider
+      value={[state.todos, todos => setState({ todos: todos })]}
+    >
+      <TodoList />
+      <Input />
+    </TodoListContext.Provider>
+  );
+};
 
 export default App;
